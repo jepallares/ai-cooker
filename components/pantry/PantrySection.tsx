@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import type { PantryItem, Location } from '@/types';
 import PantryItemCard from './PantryItemCard';
+import AddPantryForm from './AddPantryForm';
 
 const FILTERS: { id: Location | 'all'; label: string }[] = [
   { id: 'all',     label: 'Todo' },
@@ -17,17 +18,23 @@ function daysUntil(iso: string): number {
 }
 
 type Props = {
-  items: PantryItem[];
+  initialItems: PantryItem[];
 };
 
-/** Pantry section: stat cards, location filter, and item list. */
-export default function PantrySection({ items }: Props) {
-  const [filter, setFilter] = useState<Location | 'all'>('all');
+/** Pantry section: stat cards, location filter, item list, and inline add form. */
+export default function PantrySection({ initialItems }: Props) {
+  const [items, setItems]     = useState(initialItems);
+  const [filter, setFilter]   = useState<Location | 'all'>('all');
+  const [showForm, setShowForm] = useState(false);
 
-  const expiringSoon = items.filter((i) => i.expiresAt && daysUntil(i.expiresAt) <= 3 && daysUntil(i.expiresAt) >= 0);
+  const expiringSoon  = items.filter((i) => i.expiresAt && daysUntil(i.expiresAt) <= 3 && daysUntil(i.expiresAt) >= 0);
   const locationCount = new Set(items.map((i) => i.location)).size;
+  const filtered      = filter === 'all' ? items : items.filter((i) => i.location === filter);
 
-  const filtered = filter === 'all' ? items : items.filter((i) => i.location === filter);
+  function handleSave(item: PantryItem) {
+    setItems((prev) => [item, ...prev]);
+    setShowForm(false);
+  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -43,10 +50,18 @@ export default function PantrySection({ items }: Props) {
         <button className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-zinc-200 text-sm font-medium text-zinc-600 hover:bg-zinc-50 transition-colors">
           <span>📷</span> Foto IA
         </button>
-        <button className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-zinc-900 text-sm font-semibold text-white hover:bg-zinc-700 transition-colors">
+        <button
+          onClick={() => setShowForm(true)}
+          className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-zinc-900 text-sm font-semibold text-white hover:bg-zinc-700 transition-colors"
+        >
           <span>+</span> Añadir
         </button>
       </div>
+
+      {/* Inline add form */}
+      {showForm && (
+        <AddPantryForm onSave={handleSave} onCancel={() => setShowForm(false)} />
+      )}
 
       {/* Location filter tabs */}
       <div className="flex gap-1.5 overflow-x-auto pb-0.5">

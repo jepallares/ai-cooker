@@ -44,10 +44,10 @@ export default function Home() {
           <PlannerSection recipes={recipes} />
         )}
         {section === 'pantry' && (
-          <PantrySection items={pantryItems} />
+          <PantrySection initialItems={pantryItems} />
         )}
         {section === 'recipes' && (
-          <RecipesSection recipes={recipes} pantry={pantryItems} />
+          <RecipesSection initialRecipes={recipes} pantry={pantryItems} />
         )}
         {section === 'shopping' && (
           <ShoppingSection initialItems={shoppingList} />
