@@ -1,34 +1,23 @@
 'use client';
 
 import { useState } from 'react';
-import type { DayMenu, MealType, Recipe, PantryItem } from '@/types';
-import Pill from '@/components/ui/Pill';
+import type { DayMenu, Recipe, PantryItem } from '@/types';
 import RecipeView from './RecipeView';
 
-const MEAL_LABEL: Record<MealType, string> = {
-  breakfast: 'Desayuno',
-  lunch:     'Comida',
-  dinner:    'Cena',
-};
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const MEAL_EMOJI: Record<MealType, string> = {
-  breakfast: '🌅',
-  lunch:     '☀️',
-  dinner:    '🌙',
-};
-
-/** Check if all ingredients with a pantryItemId are in the pantry */
-function allIngredientsAvailable(recipe: Recipe, pantry: PantryItem[]): boolean {
-  const ids = new Set(pantry.map((p) => p.id));
-  return recipe.ingredients.every((ing) => !ing.pantryItemId || ids.has(ing.pantryItemId));
-}
-
-/** Format ISO date string as "lunes, 17 de marzo" */
 function fmtDayFull(iso: string): string {
   return new Date(iso + 'T00:00:00').toLocaleDateString('es-ES', {
     weekday: 'long', day: 'numeric', month: 'long',
   });
 }
+
+function missingCount(recipe: Recipe, pantry: PantryItem[]): number {
+  const ids = new Set(pantry.map((p) => p.id));
+  return recipe.ingredients.filter((ing) => ing.pantryItemId && !ids.has(ing.pantryItemId)).length;
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
 
 type Props = {
   day: string;
@@ -39,7 +28,7 @@ type Props = {
   onBack: () => void;
 };
 
-/** Shows breakfast, lunch and dinner for a given day. Tap a meal to open RecipeView. */
+/** Day view: two cards (lunch + dinner) each showing name, time, kcal and ingredient status. */
 export default function DayView({ day, date, dayMenu, recipes, pantry, onBack }: Props) {
   const [activeRecipeId, setActiveRecipeId] = useState<string | null>(null);
 
@@ -55,11 +44,13 @@ export default function DayView({ day, date, dayMenu, recipes, pantry, onBack }:
     );
   }
 
-  const meals: MealType[] = ['breakfast', 'lunch', 'dinner'];
+  const lunchRecipe  = dayMenu.lunch?.recipeId  ? recipes.find((r) => r.id === dayMenu.lunch!.recipeId)  : undefined;
+  const dinnerRecipe = dayMenu.dinner?.recipeId ? recipes.find((r) => r.id === dayMenu.dinner!.recipeId) : undefined;
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Back + title */}
+    <div className="flex flex-col gap-5">
+
+      {/* ── Back + title ── */}
       <div className="flex items-center gap-3">
         <button
           onClick={onBack}
@@ -68,54 +59,102 @@ export default function DayView({ day, date, dayMenu, recipes, pantry, onBack }:
           ‹
         </button>
         <div>
-          <p className="text-xs text-zinc-400 capitalize">{day}</p>
-          <h2 className="text-sm font-semibold text-zinc-800 capitalize">{fmtDayFull(date)}</h2>
+          <h2 className="text-base font-bold text-zinc-900 capitalize">{fmtDayFull(date)}</h2>
         </div>
       </div>
 
-      {/* Meal cards */}
+      {/* ── Meal cards ── */}
       <div className="flex flex-col gap-3">
-        {meals.map((meal) => {
-          const slot = dayMenu[meal];
-          const recipe = slot?.recipeId ? recipes.find((r) => r.id === slot.recipeId) : undefined;
-          const ok = recipe ? allIngredientsAvailable(recipe, pantry) : null;
-
-          return (
-            <div
-              key={meal}
-              onClick={() => recipe && setActiveRecipeId(recipe.id)}
-              className={`rounded-xl border border-zinc-100 bg-white p-4 flex items-center gap-4 ${
-                recipe ? 'cursor-pointer hover:bg-zinc-50 transition-colors' : ''
-              }`}
-            >
-              <span className="text-2xl">{MEAL_EMOJI[meal]}</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-zinc-400 mb-0.5">{MEAL_LABEL[meal]}</p>
-                {recipe ? (
-                  <>
-                    <p className="text-sm font-semibold text-zinc-800 truncate">{recipe.name}</p>
-                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                      {recipe.tags.slice(0, 2).map((tag) => (
-                        <Pill key={tag} label={tag} />
-                      ))}
-                      <span
-                        className={`text-xs font-medium ${ok ? 'text-green-600' : 'text-amber-600'}`}
-                      >
-                        {ok ? '✓ Ingredientes OK' : '⚠ Faltan ingredientes'}
-                      </span>
-                    </div>
-                  </>
-                ) : (
-                  <p className="text-sm text-zinc-300 italic">Sin planificar</p>
-                )}
-              </div>
-              {recipe && (
-                <span className="text-zinc-300 text-lg">›</span>
-              )}
-            </div>
-          );
-        })}
+        <MealCard
+          emoji="☀️"
+          label="Comida"
+          recipe={lunchRecipe}
+          pantry={pantry}
+          onTap={() => lunchRecipe && setActiveRecipeId(lunchRecipe.id)}
+        />
+        <MealCard
+          emoji="🌙"
+          label="Cena"
+          recipe={dinnerRecipe}
+          pantry={pantry}
+          onTap={() => dinnerRecipe && setActiveRecipeId(dinnerRecipe.id)}
+        />
       </div>
+
+    </div>
+  );
+}
+
+// ─── MealCard ─────────────────────────────────────────────────────────────────
+
+type MealCardProps = {
+  emoji: string;
+  label: string;
+  recipe: Recipe | undefined;
+  pantry: PantryItem[];
+  onTap: () => void;
+};
+
+function MealCard({ emoji, label, recipe, pantry, onTap }: MealCardProps) {
+  const missing = recipe ? missingCount(recipe, pantry) : 0;
+  const allOk   = recipe ? missing === 0 : false;
+  const total   = recipe ? recipe.prepTime + recipe.cookTime : 0;
+
+  return (
+    <div
+      onClick={recipe ? onTap : undefined}
+      className={`rounded-xl border bg-white p-4 flex flex-col gap-3 ${
+        recipe
+          ? 'border-zinc-100 cursor-pointer hover:bg-zinc-50 transition-colors'
+          : 'border-zinc-100 opacity-60'
+      }`}
+    >
+      {/* Header row */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-xl leading-none">{emoji}</span>
+          <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">{label}</span>
+        </div>
+        {recipe && <span className="text-zinc-300 text-lg leading-none">›</span>}
+      </div>
+
+      {recipe ? (
+        <>
+          {/* Recipe name */}
+          <p className="text-base font-bold text-zinc-900 leading-snug">{recipe.name}</p>
+
+          {/* Stats row */}
+          <div className="flex gap-4 text-xs text-zinc-500">
+            <span>⏱ {total} min</span>
+            {recipe.kcal && <span>🔥 {recipe.kcal} kcal</span>}
+            <span>👤 {recipe.servings} pers.</span>
+          </div>
+
+          {/* Ingredient status */}
+          <div className="flex items-center gap-2">
+            {/* Dot row — one dot per ingredient */}
+            <div className="flex gap-1">
+              {recipe.ingredients.map((ing, i) => {
+                const ids = new Set(pantry.map((p) => p.id));
+                const ok  = !ing.pantryItemId || ids.has(ing.pantryItemId);
+                return (
+                  <span
+                    key={i}
+                    className={`w-2 h-2 rounded-full ${ok ? 'bg-green-400' : 'bg-red-400'}`}
+                  />
+                );
+              })}
+            </div>
+            <span className={`text-xs font-medium ${allOk ? 'text-green-600' : 'text-red-500'}`}>
+              {allOk
+                ? 'Ingredientes OK'
+                : `${missing} ingrediente${missing > 1 ? 's' : ''} ${missing > 1 ? 'faltan' : 'falta'}`}
+            </span>
+          </div>
+        </>
+      ) : (
+        <p className="text-sm text-zinc-300 italic">Sin planificar</p>
+      )}
     </div>
   );
 }
