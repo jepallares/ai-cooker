@@ -33,7 +33,9 @@ export default function MiniCalendar({ startDate, endDate, onChange }: Props) {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
-  const [pendingStart, setPendingStart] = useState<string | null>(startDate);
+  // pendingStart is fully internal — tracks whether we're waiting for the second click.
+  // It is NOT derived from props so it never conflicts with the parent's startDate/endDate.
+  const [pendingStart, setPendingStart] = useState<string | null>(null);
 
   function prevMonth() {
     if (viewMonth === 0) { setViewYear((y) => y - 1); setViewMonth(11); }
@@ -45,12 +47,12 @@ export default function MiniCalendar({ startDate, endDate, onChange }: Props) {
   }
 
   function handleDayClick(iso: string) {
-    if (!pendingStart || (startDate && endDate)) {
-      // Start fresh
+    if (pendingStart === null) {
+      // First click: mark the start and wait for the second click.
+      // Parent is not notified yet — the range is incomplete.
       setPendingStart(iso);
-      onChange(iso, iso);
     } else {
-      // Set end — ensure start <= end
+      // Second click: range is complete. Notify parent and clear internal state.
       const [s, e] = iso >= pendingStart ? [pendingStart, iso] : [iso, pendingStart];
       setPendingStart(null);
       onChange(s, e);
@@ -61,6 +63,11 @@ export default function MiniCalendar({ startDate, endDate, onChange }: Props) {
   const offset = firstDayOffset(viewYear, viewMonth);
   const todayISO = toISO(today.getFullYear(), today.getMonth(), today.getDate());
 
+  // While the user is picking (pendingStart set), highlight only the pending start.
+  // Once complete (pendingStart null), reflect the confirmed range from props.
+  const displayStart = pendingStart ?? startDate;
+  const displayEnd   = pendingStart ? null : endDate;
+
   return (
     <div className="rounded-xl border border-zinc-100 bg-white p-4">
       {/* Month navigation */}
@@ -69,6 +76,11 @@ export default function MiniCalendar({ startDate, endDate, onChange }: Props) {
         <span className="text-sm font-semibold text-zinc-800">{MONTH_NAMES[viewMonth]} {viewYear}</span>
         <button onClick={nextMonth} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-zinc-100 text-zinc-500 transition-colors">›</button>
       </div>
+
+      {/* Hint text */}
+      <p className="text-[10px] text-zinc-400 mb-3 text-center">
+        {pendingStart ? 'Ahora selecciona la fecha fin' : 'Selecciona la fecha de inicio'}
+      </p>
 
       {/* Day headers */}
       <div className="grid grid-cols-7 mb-1">
@@ -86,16 +98,16 @@ export default function MiniCalendar({ startDate, endDate, onChange }: Props) {
           const d = i + 1;
           const iso = toISO(viewYear, viewMonth, d);
           const isToday = iso === todayISO;
-          const isStart = iso === startDate;
-          const isEnd = iso === endDate;
-          const inRange = startDate && endDate && iso > startDate && iso < endDate;
-          const isPast = iso < todayISO;
+          const isStart = iso === displayStart;
+          const isEnd   = iso === displayEnd;
+          const inRange = displayStart && displayEnd && iso > displayStart && iso < displayEnd;
+          const isPast  = iso < todayISO;
 
           let cellClass = 'text-zinc-700 hover:bg-zinc-100';
-          if (isPast) cellClass = 'text-zinc-300 cursor-not-allowed';
-          if (isToday && !isStart && !isEnd) cellClass = 'text-zinc-900 font-bold hover:bg-zinc-100';
-          if (inRange) cellClass = 'bg-zinc-100 text-zinc-700';
-          if (isStart || isEnd) cellClass = 'bg-zinc-900 text-white rounded-full';
+          if (isPast)                         cellClass = 'text-zinc-300 cursor-not-allowed';
+          if (isToday && !isStart && !isEnd)  cellClass = 'text-zinc-900 font-bold hover:bg-zinc-100';
+          if (inRange)                        cellClass = 'bg-zinc-100 text-zinc-700';
+          if (isStart || isEnd)               cellClass = 'bg-zinc-900 text-white';
 
           return (
             <button
