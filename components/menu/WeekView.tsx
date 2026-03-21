@@ -73,10 +73,11 @@ type Props = {
   menu: WeeklyMenu;
   recipes: Recipe[];
   pantry: PantryItem[];
+  people: number;
 };
 
 /** Week view: horizontal day pills + vertical day summary list. Tapping a day opens DayView. */
-export default function WeekView({ menu, recipes, pantry }: Props) {
+export default function WeekView({ menu, recipes, pantry, people }: Props) {
   const [weekStart, setWeekStart]   = useState(menu.weekStart);
   const [selectedDay, setSelectedDay] = useState<DayOfWeek | null>(null);
 
@@ -94,6 +95,7 @@ export default function WeekView({ menu, recipes, pantry }: Props) {
         }
         recipes={recipes}
         pantry={pantry}
+        defaultPeople={people}
         onBack={() => setSelectedDay(null)}
       />
     );

@@ -38,10 +38,12 @@ function dayName(iso: string): string {
 
 type Props = {
   recipes: Recipe[];
+  people: number;
+  onPeopleChange: (n: number) => void;
 };
 
-/** Planner: pick a date range, select days + meal type + tags, then generate a proposal. */
-export default function PlannerSection({ recipes }: Props) {
+/** Planner: pick a date range, select days + meal type + tags, people count, then generate a proposal. */
+export default function PlannerSection({ recipes, people, onPeopleChange }: Props) {
   const [startDate, setStartDate] = useState<string | null>(null);
   const [endDate, setEndDate]     = useState<string | null>(null);
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
@@ -163,6 +165,25 @@ export default function PlannerSection({ recipes }: Props) {
               {tag}
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* People count */}
+      <div className="flex flex-col gap-2">
+        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Personas</p>
+        <div className="flex items-center gap-3">
+          <button onClick={() => onPeopleChange(Math.max(1, people - 1))}
+            className="w-9 h-9 rounded-full border border-zinc-200 text-zinc-600 text-lg font-bold flex items-center justify-center hover:bg-zinc-50 transition-colors">
+            −
+          </button>
+          <span className="text-base font-bold text-zinc-900 w-6 text-center">{people}</span>
+          <button onClick={() => onPeopleChange(people + 1)}
+            className="w-9 h-9 rounded-full border border-zinc-200 text-zinc-600 text-lg font-bold flex items-center justify-center hover:bg-zinc-50 transition-colors">
+            +
+          </button>
+          <span className="text-xs text-zinc-400">
+            {people === 1 ? '1 persona' : `${people} personas`}
+          </span>
         </div>
       </div>
 

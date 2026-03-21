@@ -4,6 +4,8 @@ import { useState } from 'react';
 import type { PantryItem, Location } from '@/types';
 import PantryItemCard from './PantryItemCard';
 import AddPantryForm from './AddPantryForm';
+import VoiceButton from './VoiceButton';
+import type { ParsedVoice } from '@/lib/voice';
 
 const FILTERS: { id: Location | 'all'; label: string }[] = [
   { id: 'all',     label: 'Todo' },
@@ -17,64 +19,93 @@ function daysUntil(iso: string): number {
   return Math.round((new Date(iso + 'T00:00:00').getTime() - today.getTime()) / 86_400_000);
 }
 
+type FormMode =
+  | { type: 'closed' }
+  | { type: 'new'; prefill?: Partial<PantryItem> }
+  | { type: 'edit'; item: PantryItem };
+
 type Props = {
   initialItems: PantryItem[];
 };
 
-/** Pantry section: stat cards, location filter, item list, and inline add form. */
+/** Pantry section: stat cards, voice + manual add, inline edit, location filter. */
 export default function PantrySection({ initialItems }: Props) {
-  const [items, setItems]     = useState(initialItems);
-  const [filter, setFilter]   = useState<Location | 'all'>('all');
-  const [showForm, setShowForm] = useState(false);
+  const [items, setItems]   = useState(initialItems);
+  const [filter, setFilter] = useState<Location | 'all'>('all');
+  const [mode, setMode]     = useState<FormMode>({ type: 'closed' });
+  // Raw transcript shown as confirmation hint above the form
+  const [voiceTranscript, setVoiceTranscript] = useState<string | null>(null);
 
   const expiringSoon  = items.filter((i) => i.expiresAt && daysUntil(i.expiresAt) <= 3 && daysUntil(i.expiresAt) >= 0);
   const locationCount = new Set(items.map((i) => i.location)).size;
   const filtered      = filter === 'all' ? items : items.filter((i) => i.location === filter);
 
-  function handleSave(item: PantryItem) {
-    setItems((prev) => [item, ...prev]);
-    setShowForm(false);
+  function handleSave(saved: PantryItem) {
+    setItems((prev) => {
+      const exists = prev.some((i) => i.id === saved.id);
+      return exists
+        ? prev.map((i) => i.id === saved.id ? saved : i)   // update
+        : [saved, ...prev];                                  // prepend new
+    });
+    setMode({ type: 'closed' });
+    setVoiceTranscript(null);
   }
+
+  function handleVoiceResult(parsed: ParsedVoice, transcript: string) {
+    setVoiceTranscript(transcript);
+    setMode({ type: 'new', prefill: { name: parsed.name, quantity: parsed.quantity, unit: parsed.unit, location: parsed.location } });
+  }
+
+  const formInitialData = mode.type === 'edit' ? mode.item : mode.type === 'new' ? mode.prefill : undefined;
 
   return (
     <div className="flex flex-col gap-5">
       {/* Stat cards */}
       <div className="grid grid-cols-3 gap-2">
-        <StatCard value={items.length} label="Productos" />
-        <StatCard value={expiringSoon.length} label="Caducan pronto" highlight={expiringSoon.length > 0} />
-        <StatCard value={locationCount} label="Ubicaciones" />
+        <StatCard value={items.length}         label="Productos" />
+        <StatCard value={expiringSoon.length}  label="Caducan pronto" highlight={expiringSoon.length > 0} />
+        <StatCard value={locationCount}        label="Ubicaciones" />
       </div>
 
       {/* Action buttons */}
       <div className="flex gap-2">
-        <button className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-zinc-200 text-sm font-medium text-zinc-600 hover:bg-zinc-50 transition-colors">
-          <span>📷</span> Foto IA
+        <div className="flex-1">
+          <VoiceButton onResult={handleVoiceResult} />
+        </div>
+        <button className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-zinc-200 text-sm font-medium text-zinc-600 hover:bg-zinc-50 transition-colors">
+          📷 Foto IA
         </button>
         <button
-          onClick={() => setShowForm(true)}
-          className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-zinc-900 text-sm font-semibold text-white hover:bg-zinc-700 transition-colors"
+          onClick={() => { setVoiceTranscript(null); setMode({ type: 'new' }); }}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-zinc-900 text-sm font-semibold text-white hover:bg-zinc-700 transition-colors"
         >
-          <span>+</span> Añadir
+          + Añadir
         </button>
       </div>
 
-      {/* Inline add form */}
-      {showForm && (
-        <AddPantryForm onSave={handleSave} onCancel={() => setShowForm(false)} />
+      {/* Inline form (add / voice prefill / edit) */}
+      {mode.type !== 'closed' && (
+        <div className="flex flex-col gap-2">
+          {voiceTranscript && (
+            <p className="text-xs text-zinc-500 px-1">
+              🎙 "<span className="italic">{voiceTranscript}</span>" — revisa y confirma:
+            </p>
+          )}
+          <AddPantryForm
+            initialData={formInitialData}
+            onSave={handleSave}
+            onCancel={() => { setMode({ type: 'closed' }); setVoiceTranscript(null); }}
+          />
+        </div>
       )}
 
       {/* Location filter tabs */}
       <div className="flex gap-1.5 overflow-x-auto pb-0.5">
         {FILTERS.map((f) => (
-          <button
-            key={f.id}
-            onClick={() => setFilter(f.id)}
+          <button key={f.id} onClick={() => setFilter(f.id)}
             className={`whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-              filter === f.id
-                ? 'bg-zinc-900 text-white'
-                : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
-            }`}
-          >
+              filter === f.id ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
+            }`}>
             {f.label}
           </button>
         ))}
@@ -85,7 +116,13 @@ export default function PantrySection({ initialItems }: Props) {
         {filtered.length === 0 ? (
           <p className="py-8 text-center text-sm text-zinc-400">Sin productos en esta ubicación</p>
         ) : (
-          filtered.map((item) => <PantryItemCard key={item.id} item={item} />)
+          filtered.map((item) => (
+            <PantryItemCard
+              key={item.id}
+              item={item}
+              onEdit={() => { setVoiceTranscript(null); setMode({ type: 'edit', item }); }}
+            />
+          ))
         )}
       </div>
     </div>

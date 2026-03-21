@@ -20,28 +20,44 @@ const SECTION_TITLE: Record<Section, string> = {
 };
 
 /**
- * Root page — owns the active section state and routes to each section component.
- * To add a new section: add it to the Section type, SECTION_TITLE map, and the switch below.
+ * Root page — owns active section and global people count.
+ * people is passed to PlannerSection (to set it) and WeekView → DayView (to use it).
  */
 export default function Home() {
   const [section, setSection] = useState<Section>('menu');
+  const [people, setPeople]   = useState(2);
 
   return (
     <div className="flex flex-col min-h-screen bg-zinc-50">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white border-b border-zinc-100 px-4 pt-safe">
-        <div className="max-w-lg mx-auto py-4">
+        <div className="max-w-lg mx-auto py-4 flex items-center justify-between">
           <h1 className="text-lg font-bold text-zinc-900">{SECTION_TITLE[section]}</h1>
+          {/* Global people counter — visible in menu and planner */}
+          {(section === 'menu' || section === 'planner') && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-zinc-400">👤</span>
+              <button onClick={() => setPeople((p) => Math.max(1, p - 1))}
+                className="w-6 h-6 rounded-full border border-zinc-200 text-zinc-600 text-sm font-bold flex items-center justify-center hover:bg-zinc-50 transition-colors">
+                −
+              </button>
+              <span className="text-sm font-semibold text-zinc-800 w-4 text-center">{people}</span>
+              <button onClick={() => setPeople((p) => p + 1)}
+                className="w-6 h-6 rounded-full border border-zinc-200 text-zinc-600 text-sm font-bold flex items-center justify-center hover:bg-zinc-50 transition-colors">
+                +
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
-      {/* Main content — pb-24 leaves room for the fixed bottom nav */}
+      {/* Main content */}
       <main className="flex-1 w-full max-w-lg mx-auto px-4 py-5 pb-24">
         {section === 'menu' && (
-          <WeekView menu={weeklyMenu} recipes={recipes} pantry={pantryItems} />
+          <WeekView menu={weeklyMenu} recipes={recipes} pantry={pantryItems} people={people} />
         )}
         {section === 'planner' && (
-          <PlannerSection recipes={recipes} />
+          <PlannerSection recipes={recipes} people={people} onPeopleChange={setPeople} />
         )}
         {section === 'pantry' && (
           <PantrySection initialItems={pantryItems} />
@@ -54,7 +70,6 @@ export default function Home() {
         )}
       </main>
 
-      {/* Bottom navigation */}
       <Navigation active={section} onChange={setSection} />
     </div>
   );

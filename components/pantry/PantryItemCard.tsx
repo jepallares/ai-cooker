@@ -3,12 +3,10 @@
 import type { PantryItem } from '@/types';
 import Pill from '@/components/ui/Pill';
 
-/** Days until expiry. Returns null if no expiry date. */
 function daysUntil(iso: string): number {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const exp = new Date(iso + 'T00:00:00');
-  return Math.round((exp.getTime() - today.getTime()) / 86_400_000);
+  return Math.round((new Date(iso + 'T00:00:00').getTime() - today.getTime()) / 86_400_000);
 }
 
 const LOCATION_LABEL: Record<string, string> = {
@@ -19,10 +17,11 @@ const LOCATION_LABEL: Record<string, string> = {
 
 type Props = {
   item: PantryItem;
+  onEdit: () => void;
 };
 
-/** Card for a single pantry item showing category, location and expiry. */
-export default function PantryItemCard({ item }: Props) {
+/** Pantry item row with category badge, location, expiry colour, and edit button. */
+export default function PantryItemCard({ item, onEdit }: Props) {
   const days = item.expiresAt ? daysUntil(item.expiresAt) : null;
 
   let expiryClass = 'text-zinc-400';
@@ -36,7 +35,7 @@ export default function PantryItemCard({ item }: Props) {
 
   return (
     <div className="flex items-center gap-3 py-3 border-b border-zinc-100 last:border-b-0">
-      {/* Name + tags */}
+      {/* Name + badges */}
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-zinc-800 truncate">{item.name}</p>
         <div className="flex items-center gap-1.5 mt-1 flex-wrap">
@@ -56,6 +55,18 @@ export default function PantryItemCard({ item }: Props) {
           {expiryLabel}
         </span>
       )}
+
+      {/* Edit button */}
+      <button
+        onClick={onEdit}
+        title="Editar"
+        className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors flex-shrink-0"
+      >
+        {/* Pencil icon */}
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.6} className="w-4 h-4">
+          <path d="M13.5 3.5l3 3L6 17H3v-3L13.5 3.5z" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
     </div>
   );
 }

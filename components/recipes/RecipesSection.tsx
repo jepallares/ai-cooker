@@ -6,7 +6,6 @@ import RecipeCard from './RecipeCard';
 import RecipeView from '@/components/menu/RecipeView';
 import AddRecipeForm from './AddRecipeForm';
 
-/** Collect every unique tag across all recipes */
 function allTags(recipes: Recipe[]): string[] {
   return Array.from(new Set(recipes.flatMap((r) => r.tags))).sort();
 }
@@ -16,31 +15,33 @@ type Props = {
   pantry: PantryItem[];
 };
 
-/** Recipe library: tag filter, 2-column grid, add shortcuts, and inline manual form. */
+/** Recipe library: tag filter, 2-column grid, inline add and edit forms. */
 export default function RecipesSection({ initialRecipes, pantry }: Props) {
-  const [recipes, setRecipes]   = useState(initialRecipes);
+  const [recipes, setRecipes]     = useState(initialRecipes);
   const [activeTag, setActiveTag] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [showForm, setShowForm]   = useState(false);
+  const [viewId, setViewId]       = useState<string | null>(null);
+  const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
+  const [showAddForm, setShowAddForm]     = useState(false);
 
-  const selectedRecipe = recipes.find((r) => r.id === selectedId) ?? null;
+  const viewRecipe = recipes.find((r) => r.id === viewId) ?? null;
 
-  if (selectedRecipe) {
+  // Full-screen recipe detail
+  if (viewRecipe) {
     return (
-      <RecipeView
-        recipe={selectedRecipe}
-        pantry={pantry}
-        onBack={() => setSelectedId(null)}
-      />
+      <RecipeView recipe={viewRecipe} pantry={pantry} onBack={() => setViewId(null)} />
     );
   }
 
-  function handleSave(recipe: Recipe) {
-    setRecipes((prev) => [recipe, ...prev]);
-    setShowForm(false);
+  function handleSave(saved: Recipe) {
+    setRecipes((prev) => {
+      const exists = prev.some((r) => r.id === saved.id);
+      return exists ? prev.map((r) => r.id === saved.id ? saved : r) : [saved, ...prev];
+    });
+    setEditingRecipe(null);
+    setShowAddForm(false);
   }
 
-  const tags = allTags(recipes);
+  const tags    = allTags(recipes);
   const visible = activeTag ? recipes.filter((r) => r.tags.includes(activeTag)) : recipes;
 
   return (
@@ -53,37 +54,39 @@ export default function RecipesSection({ initialRecipes, pantry }: Props) {
         <button className="flex-1 py-2.5 rounded-xl border border-zinc-200 text-xs font-medium text-zinc-600 hover:bg-zinc-50 transition-colors">
           🔗 URL
         </button>
-        <button
-          onClick={() => setShowForm(true)}
-          className="flex-1 py-2.5 rounded-xl bg-zinc-900 text-xs font-semibold text-white hover:bg-zinc-700 transition-colors"
-        >
+        <button onClick={() => { setEditingRecipe(null); setShowAddForm(true); }}
+          className="flex-1 py-2.5 rounded-xl bg-zinc-900 text-xs font-semibold text-white hover:bg-zinc-700 transition-colors">
           + Manual
         </button>
       </div>
 
       {/* Inline add form */}
-      {showForm && (
-        <AddRecipeForm onSave={handleSave} onCancel={() => setShowForm(false)} />
+      {showAddForm && !editingRecipe && (
+        <AddRecipeForm onSave={handleSave} onCancel={() => setShowAddForm(false)} />
+      )}
+
+      {/* Inline edit form */}
+      {editingRecipe && (
+        <AddRecipeForm
+          initialData={editingRecipe}
+          onSave={handleSave}
+          onCancel={() => setEditingRecipe(null)}
+        />
       )}
 
       {/* Tag filter */}
       <div className="flex gap-1.5 overflow-x-auto pb-0.5">
-        <button
-          onClick={() => setActiveTag(null)}
+        <button onClick={() => setActiveTag(null)}
           className={`whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
             !activeTag ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
-          }`}
-        >
+          }`}>
           Todo
         </button>
         {tags.map((tag) => (
-          <button
-            key={tag}
-            onClick={() => setActiveTag(tag === activeTag ? null : tag)}
+          <button key={tag} onClick={() => setActiveTag(tag === activeTag ? null : tag)}
             className={`whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
               activeTag === tag ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
-            }`}
-          >
+            }`}>
             {tag}
           </button>
         ))}
@@ -98,7 +101,8 @@ export default function RecipesSection({ initialRecipes, pantry }: Props) {
             <RecipeCard
               key={recipe.id}
               recipe={recipe}
-              onClick={() => setSelectedId(recipe.id)}
+              onClick={() => setViewId(recipe.id)}
+              onEdit={() => { setShowAddForm(false); setEditingRecipe(recipe); }}
             />
           ))}
         </div>
