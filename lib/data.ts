@@ -22,6 +22,7 @@ export const recipes: Recipe[] = [
   {
     id: 'r1',
     name: 'Scrambled eggs with spinach',
+    imageUrl: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&q=80',
     description: 'Quick and nutritious breakfast with eggs and fresh spinach.',
     prepTime: 5,
     cookTime: 10,
@@ -43,6 +44,7 @@ export const recipes: Recipe[] = [
   {
     id: 'r2',
     name: 'Banana oat porridge',
+    imageUrl: 'https://images.unsplash.com/photo-1476124369491-e7addf5db371?w=400&q=80',
     description: 'Creamy oat porridge topped with sliced banana.',
     prepTime: 2,
     cookTime: 8,
@@ -63,6 +65,7 @@ export const recipes: Recipe[] = [
   {
     id: 'r3',
     name: 'Pasta with tomato sauce',
+    imageUrl: 'https://images.unsplash.com/photo-1555949258-054e07b0e3b5?w=400&q=80',
     description: 'Classic Italian pasta with homemade tomato sauce.',
     prepTime: 10,
     cookTime: 20,
@@ -88,6 +91,7 @@ export const recipes: Recipe[] = [
   {
     id: 'r4',
     name: 'Grilled chicken with lentils',
+    imageUrl: 'https://images.unsplash.com/photo-1598103442097-6c2a3c9d97e5?w=400&q=80',
     description: 'Protein-packed dinner with grilled chicken breast and spiced lentils.',
     prepTime: 15,
     cookTime: 30,
@@ -113,6 +117,7 @@ export const recipes: Recipe[] = [
   {
     id: 'r5',
     name: 'Greek yogurt bowl',
+    imageUrl: 'https://images.unsplash.com/photo-1547592166-23ac45744acd?w=400&q=80',
     description: 'Simple and refreshing bowl with yogurt, banana and honey.',
     prepTime: 5,
     cookTime: 0,
@@ -133,6 +138,7 @@ export const recipes: Recipe[] = [
   {
     id: 'r6',
     name: 'Salmon with peas',
+    imageUrl: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=400&q=80',
     description: 'Simple baked salmon served with buttered peas.',
     prepTime: 5,
     cookTime: 20,

@@ -25,11 +25,14 @@ type Props = {
   onBack: () => void;
 };
 
-/** Recipe detail: icon, stats, ingredient list with pantry status, expandable steps, cooking mode. */
+/** Recipe detail: hero image, stats, ingredient list with pantry status, expandable steps, cooking mode. */
 export default function RecipeView({ recipe, pantry, onBack }: Props) {
   const [expandedStep, setExpandedStep] = useState<number | null>(null);
   const [cookingMode, setCookingMode]   = useState(false);
   const [activeStep, setActiveStep]     = useState(0);
+  const [imgError, setImgError]         = useState(false);
+
+  const showImage = !!recipe.imageUrl && !imgError;
 
   const pantryIds = new Set(pantry.map((p) => p.id));
   const totalTime = recipe.prepTime + recipe.cookTime;
@@ -123,15 +126,26 @@ export default function RecipeView({ recipe, pantry, onBack }: Props) {
         </button>
       </div>
 
-      {/* ── Icon + name ── */}
-      <div className="flex flex-col items-center text-center gap-3 py-2">
-        <div className="w-16 h-16 rounded-2xl bg-zinc-100 flex items-center justify-center text-4xl">
-          {recipeEmoji(recipe.tags)}
+      {/* ── Hero image + name ── */}
+      <div className="flex flex-col gap-3">
+        <div className="w-full h-48 rounded-2xl overflow-hidden bg-zinc-100 flex items-center justify-center">
+          {showImage ? (
+            <img
+              src={recipe.imageUrl}
+              alt={recipe.name}
+              className="w-full h-full object-cover"
+              onError={() => setImgError(true)}
+            />
+          ) : (
+            <span className="text-5xl">{recipeEmoji(recipe.tags)}</span>
+          )}
         </div>
-        <h2 className="text-xl font-bold text-zinc-900 leading-snug">{recipe.name}</h2>
-        {recipe.description && (
-          <p className="text-sm text-zinc-500 leading-relaxed max-w-xs">{recipe.description}</p>
-        )}
+        <div>
+          <h2 className="text-xl font-bold text-zinc-900 leading-snug">{recipe.name}</h2>
+          {recipe.description && (
+            <p className="text-sm text-zinc-500 leading-relaxed mt-1">{recipe.description}</p>
+          )}
+        </div>
       </div>
 
       {/* ── Stats ── */}
