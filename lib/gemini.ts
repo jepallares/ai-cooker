@@ -89,6 +89,58 @@ export type ClassifiedProduct = {
   location: Location;
 };
 
+// ─── Recipe photo extraction ──────────────────────────────────────────────────
+
+export type ExtractedRecipe = {
+  name:        string;
+  description: string;
+  prepTime:    number;
+  cookTime:    number;
+  servings:    number;
+  kcal:        number | null;
+  tags:        string[];
+  ingredients: { name: string; quantity: number; unit: string }[];
+  steps:       string[];
+};
+
+export async function extractRecipeFromPhoto(
+  base64:   string,
+  mimeType: string,
+): Promise<ExtractedRecipe> {
+  const prompt = `Analiza esta imagen de receta y extrae toda la información disponible.
+Devuelve ÚNICAMENTE este JSON (sin markdown):
+{
+  "name": "<nombre de la receta en español>",
+  "description": "<descripción breve, 1-2 frases>",
+  "prepTime": <minutos de preparación, número>,
+  "cookTime": <minutos de cocción, número>,
+  "servings": <raciones, número>,
+  "kcal": <calorías por ración o null si no se ve>,
+  "tags": ["<etiqueta1>", ...],
+  "ingredients": [
+    { "name": "<ingrediente>", "quantity": <número>, "unit": "<unidad>" }
+  ],
+  "steps": ["<paso 1>", "<paso 2>", ...]
+}
+
+Para los tags usa solo: breakfast, lunch, dinner, quick, vegetarian, vegan, high-protein, healthy, family.
+Si no puedes leer algún dato con certeza, estímalo razonablemente. Devuelve siempre JSON válido.`;
+
+  const result = await model.generateContent({
+    contents: [{
+      role: 'user',
+      parts: [
+        { inlineData: { mimeType, data: base64 } },
+        { text: prompt },
+      ],
+    }],
+  });
+
+  return JSON.parse(result.response.text()) as ExtractedRecipe;
+}
+
+// ─── Product photo classification ─────────────────────────────────────────────
+
 export async function classifyProductPhoto(
   base64:   string,
   mimeType: string,
