@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import type { ShoppingItem } from '@/types';
 import Pill from '@/components/ui/Pill';
+import { toggleShoppingItem, deleteShoppingItem } from '@/lib/db';
 import AlertBanner from '@/components/ui/AlertBanner';
 
 type Props = {
@@ -20,8 +21,12 @@ export default function ShoppingSection({ initialItems }: Props) {
   const progress = total === 0 ? 0 : Math.round((checkedCount / total) * 100);
 
   function toggleItem(id: string) {
+    const item = items.find((i) => i.id === id);
+    if (!item) return;
+    const newChecked = !item.checked;
+    toggleShoppingItem(id, newChecked).catch(console.error);
     setItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, checked: !item.checked } : item)),
+      prev.map((i) => (i.id === id ? { ...i, checked: newChecked } : i)),
     );
   }
 
@@ -102,6 +107,17 @@ export default function ShoppingSection({ initialItems }: Props) {
             <span className={`text-sm whitespace-nowrap transition-colors ${item.checked ? 'text-zinc-300' : 'text-zinc-500'}`}>
               {item.quantity} {item.unit}
             </span>
+
+            {/* Delete button */}
+            <button
+              onClick={(e) => { e.preventDefault(); deleteShoppingItem(item.id).catch(console.error); setItems((prev) => prev.filter((i) => i.id !== item.id)); }}
+              title="Eliminar"
+              className="p-1 rounded-lg text-zinc-300 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"
+            >
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.6} className="w-4 h-4">
+                <path d="M5 5h10l-1 11H6L5 5zm3-2h4M3 5h14" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
           </label>
         ))}
       </div>

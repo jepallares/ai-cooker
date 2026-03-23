@@ -18,10 +18,11 @@ const LOCATION_LABEL: Record<string, string> = {
 type Props = {
   item: PantryItem;
   onEdit: () => void;
+  onDelete: () => void;
 };
 
-/** Pantry item row with category badge, location, expiry colour, and edit button. */
-export default function PantryItemCard({ item, onEdit }: Props) {
+/** Pantry item row with category badge, location, expiry colour, and edit/delete buttons. */
+export default function PantryItemCard({ item, onEdit, onDelete }: Props) {
   const days = item.expiresAt ? daysUntil(item.expiresAt) : null;
 
   let expiryClass = 'text-zinc-400';
@@ -57,14 +58,18 @@ export default function PantryItemCard({ item, onEdit }: Props) {
       )}
 
       {/* Edit button */}
-      <button
-        onClick={onEdit}
-        title="Editar"
-        className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors flex-shrink-0"
-      >
-        {/* Pencil icon */}
+      <button onClick={onEdit} title="Editar"
+        className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors flex-shrink-0">
         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.6} className="w-4 h-4">
           <path d="M13.5 3.5l3 3L6 17H3v-3L13.5 3.5z" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+
+      {/* Delete button */}
+      <button onClick={onDelete} title="Eliminar"
+        className="p-1.5 rounded-lg text-zinc-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.6} className="w-4 h-4">
+          <path d="M5 5h10l-1 11H6L5 5zm3-2h4M3 5h14" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
     </div>

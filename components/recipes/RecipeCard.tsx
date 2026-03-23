@@ -19,10 +19,11 @@ type Props = {
   recipe: Recipe;
   onClick: () => void;
   onEdit: () => void;
+  onDelete: () => void;
 };
 
 /** 2-column grid card with hero image, name, tags, time, kcal and edit button. */
-export default function RecipeCard({ recipe, onClick, onEdit }: Props) {
+export default function RecipeCard({ recipe, onClick, onEdit, onDelete }: Props) {
   const [imgError, setImgError] = useState(false);
   const totalTime = recipe.prepTime + recipe.cookTime;
   const showImage = !!recipe.imageUrl && !imgError;
@@ -39,14 +40,17 @@ export default function RecipeCard({ recipe, onClick, onEdit }: Props) {
         )}
       </button>
 
-      {/* Edit button — top-right corner overlay */}
-      <button
-        onClick={(e) => { e.stopPropagation(); onEdit(); }}
-        title="Editar receta"
-        className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm text-zinc-500 hover:text-zinc-900 transition-colors"
-      >
+      {/* Edit + delete overlay buttons */}
+      <button onClick={(e) => { e.stopPropagation(); onEdit(); }} title="Editar receta"
+        className="absolute top-2 right-10 w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm text-zinc-500 hover:text-zinc-900 transition-colors">
         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.6} className="w-3.5 h-3.5">
           <path d="M13.5 3.5l3 3L6 17H3v-3L13.5 3.5z" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      <button onClick={(e) => { e.stopPropagation(); onDelete(); }} title="Eliminar receta"
+        className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm text-zinc-400 hover:text-red-500 transition-colors">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.6} className="w-3.5 h-3.5">
+          <path d="M5 5h10l-1 11H6L5 5zm3-2h4M3 5h14" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
 

@@ -6,6 +6,7 @@ import PantryItemCard from './PantryItemCard';
 import AddPantryForm from './AddPantryForm';
 import VoiceButton from './VoiceButton';
 import type { ParsedVoice } from '@/lib/voice';
+import { savePantryItem, deletePantryItem } from '@/lib/db';
 
 const FILTERS: { id: Location | 'all'; label: string }[] = [
   { id: 'all',     label: 'Todo' },
@@ -41,6 +42,7 @@ export default function PantrySection({ initialItems }: Props) {
   const filtered      = filter === 'all' ? items : items.filter((i) => i.location === filter);
 
   function handleSave(saved: PantryItem) {
+    savePantryItem(saved).catch(console.error);
     setItems((prev) => {
       const exists = prev.some((i) => i.id === saved.id);
       return exists
@@ -121,6 +123,7 @@ export default function PantrySection({ initialItems }: Props) {
               key={item.id}
               item={item}
               onEdit={() => { setVoiceTranscript(null); setMode({ type: 'edit', item }); }}
+              onDelete={() => { deletePantryItem(item.id).catch(console.error); setItems((prev) => prev.filter((i) => i.id !== item.id)); }}
             />
           ))
         )}

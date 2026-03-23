@@ -5,6 +5,7 @@ import type { Recipe, PantryItem } from '@/types';
 import RecipeCard from './RecipeCard';
 import RecipeView from '@/components/menu/RecipeView';
 import AddRecipeForm from './AddRecipeForm';
+import { saveRecipe, deleteRecipe } from '@/lib/db';
 
 function allTags(recipes: Recipe[]): string[] {
   return Array.from(new Set(recipes.flatMap((r) => r.tags))).sort();
@@ -33,6 +34,7 @@ export default function RecipesSection({ initialRecipes, pantry }: Props) {
   }
 
   function handleSave(saved: Recipe) {
+    saveRecipe(saved).catch(console.error);
     setRecipes((prev) => {
       const exists = prev.some((r) => r.id === saved.id);
       return exists ? prev.map((r) => r.id === saved.id ? saved : r) : [saved, ...prev];
@@ -103,6 +105,7 @@ export default function RecipesSection({ initialRecipes, pantry }: Props) {
               recipe={recipe}
               onClick={() => setViewId(recipe.id)}
               onEdit={() => { setShowAddForm(false); setEditingRecipe(recipe); }}
+              onDelete={() => { deleteRecipe(recipe.id).catch(console.error); setRecipes((prev) => prev.filter((r) => r.id !== recipe.id)); }}
             />
           ))}
         </div>
