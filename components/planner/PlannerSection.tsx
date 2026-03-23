@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import type { Recipe } from '@/types';
+import type { Recipe, PantryItem } from '@/types';
+import type { MenuDayProposal } from '@/lib/gemini';
 import MiniCalendar from './MiniCalendar';
-import Pill from '@/components/ui/Pill';
 
 const DAY_NAMES = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
 const MEAL_OPTIONS: { id: 'breakfast' | 'lunch' | 'dinner' | 'all'; label: string }[] = [
@@ -38,18 +38,21 @@ function dayName(iso: string): string {
 
 type Props = {
   recipes: Recipe[];
+  pantry: PantryItem[];
   people: number;
   onPeopleChange: (n: number) => void;
 };
 
 /** Planner: pick a date range, select days + meal type + tags, people count, then generate a proposal. */
-export default function PlannerSection({ recipes, people, onPeopleChange }: Props) {
+export default function PlannerSection({ recipes, pantry, people, onPeopleChange }: Props) {
   const [startDate, setStartDate] = useState<string | null>(null);
   const [endDate, setEndDate]     = useState<string | null>(null);
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const [mealType, setMealType] = useState<'all' | 'breakfast' | 'lunch' | 'dinner'>('all');
   const [activeTags, setActiveTags] = useState<string[]>([]);
-  const [proposal, setProposal] = useState<Record<string, Recipe | null> | null>(null);
+  const [proposal, setProposal] = useState<Record<string, MenuDayProposal> | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [genError, setGenError] = useState<string | null>(null);
 
   const allTags = Array.from(new Set(recipes.flatMap((r) => r.tags))).sort();
   const range = startDate && endDate ? dateRange(startDate, endDate) : [];
@@ -74,23 +77,22 @@ export default function PlannerSection({ recipes, people, onPeopleChange }: Prop
     );
   }
 
-  function generateProposal() {
-    const pool = activeTags.length
-      ? recipes.filter((r) => activeTags.every((t) => r.tags.includes(t)))
-      : recipes;
-
-    const filtered = pool.filter((r) => {
-      if (mealType === 'all') return true;
-      return r.tags.includes(mealType);
-    });
-
-    const result: Record<string, Recipe | null> = {};
-    selectedDays.forEach((day) => {
-      result[day] = filtered.length
-        ? filtered[Math.floor(Math.random() * filtered.length)]
-        : null;
-    });
-    setProposal(result);
+  async function generateProposal() {
+    setGenerating(true);
+    setGenError(null);
+    try {
+      const res = await fetch('/api/gemini/menu', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pantry, recipes, days: selectedDays, mealType, people }),
+      });
+      if (!res.ok) throw new Error('Error del servidor');
+      setProposal(await res.json());
+    } catch {
+      setGenError('No se pudo generar la propuesta. Inténtalo de nuevo.');
+    } finally {
+      setGenerating(false);
+    }
   }
 
   return (
@@ -189,33 +191,40 @@ export default function PlannerSection({ recipes, people, onPeopleChange }: Prop
 
       {/* Generate button */}
       <button
-        disabled={selectedDays.length === 0}
+        disabled={selectedDays.length === 0 || generating}
         onClick={generateProposal}
-        className="w-full py-3 rounded-xl bg-zinc-900 text-sm font-semibold text-white disabled:opacity-30 hover:bg-zinc-700 transition-colors"
+        className="w-full py-3 rounded-xl bg-zinc-900 text-sm font-semibold text-white disabled:opacity-30 hover:bg-zinc-700 transition-colors flex items-center justify-center gap-2"
       >
-        ✨ Generar propuesta
+        {generating ? (
+          <>
+            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            Generando…
+          </>
+        ) : '✨ Generar propuesta con IA'}
       </button>
+
+      {genError && (
+        <p className="text-xs text-red-500 text-center">{genError}</p>
+      )}
 
       {/* Proposal result */}
       {proposal && (
         <div className="flex flex-col gap-2">
-          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Propuesta generada</p>
+          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Propuesta IA</p>
           <div className="rounded-xl border border-zinc-100 bg-white divide-y divide-zinc-100">
-            {Object.entries(proposal).map(([iso, recipe]) => (
-              <div key={iso} className="flex items-center gap-3 px-4 py-3">
-                <div className="min-w-[52px]">
+            {Object.entries(proposal).map(([iso, entry]) => (
+              <div key={iso} className="flex items-start gap-3 px-4 py-3">
+                <div className="min-w-[52px] pt-0.5">
                   <p className="text-[10px] text-zinc-400 font-medium">{dayName(iso)}</p>
                   <p className="text-sm font-semibold text-zinc-800">{fmtDate(iso)}</p>
                 </div>
-                {recipe ? (
+                {entry ? (
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-zinc-700 truncate">{recipe.name}</p>
-                    <div className="flex gap-1 mt-0.5 flex-wrap">
-                      {recipe.tags.slice(0, 2).map((t) => <Pill key={t} label={t} />)}
-                    </div>
+                    <p className="text-sm font-medium text-zinc-700 truncate">{entry.recipeName}</p>
+                    <p className="text-xs text-zinc-400 mt-0.5 leading-snug">{entry.reason}</p>
                   </div>
                 ) : (
-                  <p className="text-sm text-zinc-300 italic">Sin receta disponible</p>
+                  <p className="text-sm text-zinc-300 italic pt-0.5">Sin receta disponible</p>
                 )}
               </div>
             ))}

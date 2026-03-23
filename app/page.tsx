@@ -89,7 +89,7 @@ export default function Home() {
           <WeekView menu={menu} recipes={recipes} pantry={pantry} people={people} />
         )}
         {section === 'planner' && (
-          <PlannerSection recipes={recipes} people={people} onPeopleChange={setPeople} />
+          <PlannerSection recipes={recipes} pantry={pantry} people={people} onPeopleChange={setPeople} />
         )}
         {section === 'pantry' && (
           <PantrySection initialItems={pantry} />

@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+'use client';
+
+import { useState, useRef } from 'react';
 import type { PantryItem, Location } from '@/types';
 import PantryItemCard from './PantryItemCard';
 import AddPantryForm from './AddPantryForm';
@@ -34,8 +36,37 @@ export default function PantrySection({ initialItems }: Props) {
   const [items, setItems]   = useState(initialItems);
   const [filter, setFilter] = useState<Location | 'all'>('all');
   const [mode, setMode]     = useState<FormMode>({ type: 'closed' });
-  // Raw transcript shown as confirmation hint above the form
   const [voiceTranscript, setVoiceTranscript] = useState<string | null>(null);
+  const [classifying, setClassifying] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  async function handlePhotoSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    setClassifying(true);
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve((reader.result as string).split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const res = await fetch('/api/gemini/classify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ base64, mimeType: file.type }),
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setVoiceTranscript(null);
+      setMode({ type: 'new', prefill: data });
+    } catch {
+      alert('No se pudo clasificar la imagen. Inténtalo de nuevo.');
+    } finally {
+      setClassifying(false);
+    }
+  }
 
   const expiringSoon  = items.filter((i) => i.expiresAt && daysUntil(i.expiresAt) <= 3 && daysUntil(i.expiresAt) >= 0);
   const locationCount = new Set(items.map((i) => i.location)).size;
@@ -74,8 +105,22 @@ export default function PantrySection({ initialItems }: Props) {
         <div className="flex-1">
           <VoiceButton onResult={handleVoiceResult} />
         </div>
-        <button className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-zinc-200 text-sm font-medium text-zinc-600 hover:bg-zinc-50 transition-colors">
-          📷 Foto IA
+        <input
+          ref={photoInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={handlePhotoSelected}
+        />
+        <button
+          onClick={() => photoInputRef.current?.click()}
+          disabled={classifying}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-zinc-200 text-sm font-medium text-zinc-600 hover:bg-zinc-50 disabled:opacity-50 transition-colors"
+        >
+          {classifying ? (
+            <><span className="w-3.5 h-3.5 border-2 border-zinc-300 border-t-zinc-600 rounded-full animate-spin" /> Analizando…</>
+          ) : '📷 Foto IA'}
         </button>
         <button
           onClick={() => { setVoiceTranscript(null); setMode({ type: 'new' }); }}
